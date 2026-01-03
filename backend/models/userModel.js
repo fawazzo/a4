@@ -29,13 +29,22 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 // Encrypt password before saving
-userSchema.pre('save', async function (next) {
+// --- FIX: Removed 'next' and rely on the async function to return a Promise ---
+userSchema.pre('save', async function () { 
   if (!this.isModified('password')) {
-    return next(); // CRITICAL FIX: Ensure 'next' is returned to exit the hook.
+    return; // <-- Use 'return' instead of 'return next()'
   }
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next(); // CRITICAL: Call next() after hashing is complete.
+  
+  // Use try/catch for robust error handling, or let the error bubble up.
+  try {
+      const salt = await bcrypt.genSalt(10);
+      this.password = await bcrypt.hash(this.password, salt);
+  } catch (error) {
+      // Rejects the Mongoose save operation with an error
+      throw new Error(`Password hashing failed: ${error.message}`); 
+  }
+  
+  // Implicitly resolves the promise, allowing the save operation to continue.
 });
 
 const User = mongoose.model('User', userSchema);
